@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="../../static/css/index.css">
+    <link rel="stylesheet" href="../../static/eui/element-ui.css">
+    <script src="../../static/vue/vue.min.js"></script>
+    <script src="../../static/vue/vue-resource.js"></script>
+    <script src="../../static/eui/index.js"></script>
+    <script src="../../static/comm/Ajax.js"></script>
+</head>
+<style>
+    .el-form-item {
+        width: 80%;
+    }
+    
+    .showForm {
+        display: none;
+    }
+</style>
+
+<body>
+    <div id="app">
+
+        <!-- 弹出表单 -->
+        <el-dialog title="新增数据" :visible.sync="dialogFormVisible">
+            <el-form ref="form" :model="form" label-width="80px">
+                <el-form-item label="客户名称">
+                    <el-input v-model="form.name"></el-input>
+                </el-form-item>
+                <el-form-item label="性别">
+                    <el-radio-group v-model="form.sex">
+                        <el-radio label="男"></el-radio>
+                        <el-radio label="女"></el-radio>
+                    </el-radio-group>
+                </el-form-item>
+
+                <el-form-item label="联系电话">
+                    <el-input v-model="form.tell"></el-input>
+                </el-form-item>
+
+                <el-form-item label="所在地址">
+                    <el-input v-model="form.addr"></el-input>
+                </el-form-item>
+
+                <el-form-item>
+                    <el-button type="primary" @click="addOrEdit">保存</el-button>
+                    <el-button @click="hideForm">取消</el-button>
+                </el-form-item>
+            </el-form>
+        </el-dialog>
+
+
+
+        <!-- 新增、删除按钮 -->
+        <el-row>
+            <el-button @click="open()" type="primary">添加</el-button>
+            <el-button @click="del()" :disabled="idList.length > 0? false:true" type="danger">删除</el-button>
+        </el-row>
+        <!-- 列表 -->
+        <template>
+            <el-table :data="tableData" @selection-change="selectionChange" stripe style="width: 90%">
+                <el-table-column type="selection" width="55">
+                </el-table-column>
+                <el-table-column prop="id" label="编号" width="180">
+                </el-table-column>
+                <el-table-column prop="name" label="姓名" width="180">
+                </el-table-column>
+                <el-table-column prop="sex" label="性别" width="180">
+                </el-table-column>
+                <el-table-column prop="tell" label="联系方式" width="180">
+                </el-table-column>
+                <el-table-column prop="addr" label="地址">
+                </el-table-column>
+            </el-table>
+        </template>
+        <!-- 分页 -->
+        <el-pagination v-if="page.total>page.size" background layout="prev, pager, next" @current-change="currentChange" :page-size="page.size" :current-page="page.current" :total="page.total">
+        </el-pagination>
+    </div>
+</body>
+
+</html>
+
+<script>
+    var Main = {
+        data() {
+            return {
+                ajax: null,
+                //列表相关
+                tableData: [],
+                page: {
+                    current: 1,
+                    size: 5,
+                    total: 0
+                },
+
+                idList: [],
+
+                // 表单相关
+                form: {
+                    id: '',
+                    name: '',
+                    sex: '男',
+                    tell: '',
+                    addr: ''
+                },
+
+                dialogFormVisible: false,
+
+
+
+            }
+        },
+
+        //页面初始化的时候，去调用
+        created() {
+            this.ajax = new Ajax(this);
+            this.getData();
+        },
+
+        methods: {
+
+            //通过ajax去请求服务端，获取数据 
+            getData() {
+                let that = this;
+                let url = "customerTable?current=" + that.page.current +
+                    "&size=" + that.page.size;
+                //调用Ajax的get方法
+                that.ajax.get(url, function(rs) {
+                    if (rs.code == 0) {
+                        that.tableData = rs.data.records;
+                        that.page.total = rs.data.total;
+                        that.initForm()
+                            // console.log(this.form);
+                            // console.log(this.tableData);
+
+
+                    }
+                });
+            },
+
+
+
+            addOrEdit() {
+                length = this.idList.length
+                    // console.log("length=" + length);
+                    // 新增
+                if (length == 0) {
+                    this.add()
+                }
+                // 修改 
+                else {
+                    this.edit()
+                }
+            },
+
+            // -------------------------具体的增删改方法--------------------------------
+            // 删除数据
+            del() {
+                if (this.idList.length > 0) {
+                    let that = this;
+                    let idList = that.idList.toString();
+                    let url = "customerTable?idList=" + idList;
+                    // console.log(url);
+
+                    //调用Ajax的delete方法
+                    that.ajax.delete(url, function(rs) {
+                        if (rs.code == 0) {
+                            //重新获取数据
+                            that.successTip()
+                            that.getData();
+                        }
+                    });
+                }
+            },
+            // 添加方法
+            add() {
+                let that = this;
+                let url = "customerTable";
+                let data = that.form;
+                //调用Ajax的post方法
+                that.ajax.post(url, function(rs) {
+                    if (rs.code == 0) {
+                        //重新获取数据
+                        that.close()
+                        that.successTip()
+                        that.getData();
+                    }
+                }, data);
+            },
+
+            // 修改方法
+            edit() {
+                let that = this;
+                let url = "customerTable";
+                let data = that.form;
+                //调用Ajax的post方法
+                that.ajax.put(url, function(rs) {
+                    if (rs.code == 0) {
+                        //重新获取数据
+
+                        that.dialogFormVisible = false;
+                        that.successTip()
+                        that.getData();
+                    }
+                }, data);
+            },
+            // -------------------------具体的增删改方法--------------------------
+
+            // 点击保存后隐藏表单
+            hideForm() {
+                this.dialogFormVisible = false
+            },
+            // -------------------------消息提示方法------------------------------------
+            successTip() {
+                this.$message({
+                    message: '操作成功！',
+                    type: 'success'
+                });
+            },
+            errorTip() {
+                this.$message.error('操作失败！');
+            },
+            warntip() {
+                this.$message({
+                    message: '只能选择一行！',
+                    type: 'warning'
+                });
+            },
+            // -------------------------消息提示方法------------------------------------
+
+            // 填充用户数据
+            // fillFormData() {
+            //     // console.log(this.form);
+            //     // console.log(this.selection[0]);
+
+
+            //     // formData = this.tableData
+            //     let data = selection[0]
+            //     this.form.name = data.name
+            //     this.form.sex = data.sex
+            //     this.form.tell = data.tell
+            //     this.form.addr = data.addr
+            //         // console.log(this.form)
+
+            //     // this.Update()
+            // },
+
+
+            // 行选择触发事件
+            selectionChange(selection) {
+                this.idList = [];
+                selection.forEach(element => {
+                    this.idList.push(element.id);
+                });
+                // console.log(selection.length);
+
+                if (selection.length == 1) {
+                    // console.log(selection[0]);
+
+                    // this.fillFormData()
+                    let data = selection[0]
+                    if (data) {
+                        this.form.id = data.id
+                        this.form.name = data.name
+                        this.form.sex = data.sex
+                        this.form.tell = data.tell
+                        this.form.addr = data.addr
+
+                    }
+
+                }
+                if (selection.length == 0) {
+                    this.initForm()
+                }
+            },
+            // 打开表单
+            open() {
+                // 判断是否有任意行被选中,有则显示当前行的数据，没有则表单为空
+                length = this.idList.length
+                    // console.log(length);
+                    // 选中多行
+                if (length > 1) {
+                    this.warntip()
+                    return
+                }
+                // 没选中任意一行 
+                else if (this.idList == 0)
+                    this.dialogFormVisible = true
+                    //选中一行 
+                else {
+                    this.dialogFormVisible = true
+                }
+            },
+            // 关闭表单
+            close() {
+                this.dialogFormVisible = false
+
+            },
+            //分页点击事件
+            currentChange(current) {
+                // console.log(current);
+                this.page.current = current;
+                this.getData();
+            },
+            // 初始化表单
+            initForm() {
+                // console.log(this.form);
+
+                this.form = {
+                        id: '',
+                        name: '',
+                        sex: '男',
+                        tell: '',
+                        addr: ''
+                    }
+                    // console.log(this.form);
+
+            },
+
+
+        }
+    }
+    var Ctor = Vue.extend(Main)
+    new Ctor().$mount('#app')
+</script>
